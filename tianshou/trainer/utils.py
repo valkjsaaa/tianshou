@@ -14,6 +14,7 @@ def test_episode(
     test_fn: Optional[Callable[[int, Optional[int]], None]],
     epoch: int,
     n_episode: int,
+    n_step: int,
     logger: Optional[BaseLogger] = None,
     global_step: Optional[int] = None,
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
@@ -24,7 +25,7 @@ def test_episode(
     policy.eval()
     if test_fn:
         test_fn(epoch, global_step)
-    result = collector.collect(n_episode=n_episode)
+    result = collector.collect(n_episode=n_episode, n_step=n_step)
     if reward_metric:
         rew = reward_metric(result["rews"])
         result.update(rews=rew, rew=rew.mean(), rew_std=rew.std())

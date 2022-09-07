@@ -65,7 +65,7 @@ class BaseLogger(ABC):
             evaluating stage, i.e., returns of collector.collect().
         :param int step: stands for the timestep the collect_result being logged.
         """
-        assert collect_result["n/ep"] > 0
+        # assert collect_result["n/ep"] > 0
         if step - self.last_log_test_step >= self.test_interval:
             log_data = {
                 "test/env_step": step,

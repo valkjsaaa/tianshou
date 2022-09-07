@@ -6,7 +6,7 @@ from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Union
 import numpy as np
 import tqdm
 
-from tianshou.data import AsyncCollector, Collector, ReplayBuffer
+from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
@@ -139,6 +139,7 @@ class BaseTrainer(ABC):
         step_per_epoch: Optional[int] = None,
         repeat_per_collect: Optional[int] = None,
         episode_per_test: Optional[int] = None,
+        step_per_test: Optional[int] = None,
         update_per_step: Union[int, float] = 1,
         update_per_epoch: Optional[int] = None,
         step_per_collect: Optional[int] = None,
@@ -189,6 +190,7 @@ class BaseTrainer(ABC):
         self.repeat_per_collect = repeat_per_collect
 
         self.episode_per_test = episode_per_test
+        self.step_per_test = step_per_test
 
         self.batch_size = batch_size
 
@@ -231,12 +233,11 @@ class BaseTrainer(ABC):
                 self.test_in_train = False
 
         if self.test_collector is not None:
-            assert self.episode_per_test is not None
-            assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
+            assert self.episode_per_test is not None or self.step_per_test is not None
             self.test_collector.reset_stat()
             test_result = test_episode(
                 self.policy, self.test_collector, self.test_fn, self.start_epoch,
-                self.episode_per_test, self.logger, self.env_step, self.reward_metric
+                self.episode_per_test, self.step_per_test, self.logger, self.env_step, self.reward_metric
             )
             self.best_epoch = self.start_epoch
             self.best_reward, self.best_reward_std = \
@@ -338,12 +339,12 @@ class BaseTrainer(ABC):
 
     def test_step(self) -> Tuple[Dict[str, Any], bool]:
         """Perform one testing step."""
-        assert self.episode_per_test is not None
+        assert self.episode_per_test is not None or self.step_per_test is not None
         assert self.test_collector is not None
         stop_fn_flag = False
         test_result = test_episode(
             self.policy, self.test_collector, self.test_fn, self.epoch,
-            self.episode_per_test, self.logger, self.env_step, self.reward_metric
+            self.episode_per_test, self.step_per_test, self.logger, self.env_step, self.reward_metric
         )
         rew, rew_std = test_result["rew"], test_result["rew_std"]
         if self.best_epoch < 0 or self.best_reward < rew:
@@ -375,7 +376,7 @@ class BaseTrainer(ABC):
 
     def train_step(self) -> Tuple[Dict[str, Any], Dict[str, Any], bool]:
         """Perform one training step."""
-        assert self.episode_per_test is not None
+        assert self.episode_per_test is not None or self.step_per_test is not None
         assert self.train_collector is not None
         stop_fn_flag = False
         if self.train_fn:
@@ -402,7 +403,7 @@ class BaseTrainer(ABC):
                 assert self.test_collector is not None
                 test_result = test_episode(
                     self.policy, self.test_collector, self.test_fn, self.epoch,
-                    self.episode_per_test, self.logger, self.env_step
+                    self.episode_per_test, self.step_per_test,  self.logger, self.env_step
                 )
                 if self.stop_fn(test_result["rew"]):
                     stop_fn_flag = True
